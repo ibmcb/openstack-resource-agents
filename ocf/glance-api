@@ -12,6 +12,9 @@
 #
 # (c) 2012      hastexo Professional Services GmbH
 #
+# Small changes made by marcios@us.ibm.com to allow it be executed directly 
+# from a bash prompt.
+#
 # See usage() function below for more details ...
 #
 # OCF instance parameters:
@@ -22,12 +25,13 @@
 #   OCF_RESKEY_os_password
 #   OCF_RESKEY_os_tenant_name
 #   OCF_RESKEY_os_auth_url
+#   OCF_RESKEY_os_image_url
 #   OCF_RESKEY_user
 #   OCF_RESKEY_pid
 #   OCF_RESKEY_additional_parameters
 #######################################################################
 # Initialization:
-
+OCF_ROOT=${OCF_ROOT:-/usr/lib/ocf}
 : ${OCF_FUNCTIONS_DIR=${OCF_ROOT}/lib/heartbeat}
 . ${OCF_FUNCTIONS_DIR}/ocf-shellfuncs
 
@@ -144,6 +148,14 @@ The URL pointing to this ImageService (glance-api) instance to use when logging 
 <content type="string" />
 </parameter>
 
+<parameter name="os_image_url" unique="0" required="0">
+<longdesc lang="en">
+The URL pointing to this particular local instance of glance-api
+</longdesc>
+<shortdesc lang="en">ImageService (glance-api) URL for monitoring login</shortdesc>
+<content type="string" />
+</parameter>
+
 <parameter name="client_binary" unique="0" required="0">
 <longdesc lang="en">
 Location of the OpenStack ImageService client binary (glance)
@@ -243,6 +255,7 @@ glance_api_monitor() {
         --os_password "$OCF_RESKEY_os_password" \
         --os_tenant_name "$OCF_RESKEY_os_tenant_name" \
         --os_auth_url "$OCF_RESKEY_os_auth_url" \
+        --os-image-url "$OCF_RESKEY_os_image_url" \
         index > /dev/null 2>&1
         rc=$?
         if [ $rc -ne 0 ]; then

@@ -12,6 +12,10 @@
 #
 # (c) 2012      hastexo Professional Services GmbH
 #
+# Small changes made by marcios@us.ibm.com to: 
+# a) allow it be executed directly 
+# b) allow keystone to be deployed on active/active mode.
+#
 # See usage() function below for more details ...
 #
 # OCF instance parameters:
@@ -22,12 +26,14 @@
 #   OCF_RESKEY_os_password
 #   OCF_RESKEY_os_tenant_name
 #   OCF_RESKEY_os_auth_url
+#   OCF_RESKEY_os_endpoint
+#   OCF_RESKEY_os_token
 #   OCF_RESKEY_user
 #   OCF_RESKEY_pid
 #   OCF_RESKEY_additional_parameters
 #######################################################################
 # Initialization:
-
+OCF_ROOT=${OCF_ROOT:-/usr/lib/ocf}
 : ${OCF_FUNCTIONS_DIR=${OCF_ROOT}/lib/heartbeat}
 . ${OCF_FUNCTIONS_DIR}/ocf-shellfuncs
 
@@ -130,7 +136,23 @@ The tenant to use when logging into Keystone for monitoring purposes
 
 <parameter name="os_auth_url" unique="0" required="0">
 <longdesc lang="en">
-The URL pointing to this Keystone instance to use when logging in for monitoring purposes
+The AUTH URL pointing to this Keystone instance to use when logging in for monitoring purposes
+</longdesc>
+<shortdesc lang="en">Keystone URL for monitoring login</shortdesc>
+<content type="string" />
+</parameter>
+
+<parameter name="os_endpoint" unique="0" required="0">
+<longdesc lang="en">
+The ENDPOINT URL pointing to this Keystone instance to use when logging in for monitoring purposes
+</longdesc>
+<shortdesc lang="en">Keystone URL for monitoring login</shortdesc>
+<content type="string" />
+</parameter>
+
+<parameter name="os_token" unique="0" required="0">
+<longdesc lang="en">
+The SERVICE token to use when logging in for monitoring purposes
 </longdesc>
 <shortdesc lang="en">Keystone URL for monitoring login</shortdesc>
 <content type="string" />
@@ -245,6 +267,8 @@ keystone_monitor() {
         --os-password "$OCF_RESKEY_os_password" \
         --os-tenant-name "$OCF_RESKEY_os_tenant_name" \
         --os-auth-url "$OCF_RESKEY_os_auth_url" \
+        --os-endpoint "$OCF_RESKEY_os_endpoint" \
+        --os-token "$OCF_RESKEY_os_token" \
         user-list > /dev/null 2>&1
         rc=$?
         if [ $rc -ne 0 ]; then

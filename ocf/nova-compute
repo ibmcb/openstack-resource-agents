@@ -1,27 +1,25 @@
 #!/bin/sh
 #
 #
-# OpenStack Neutron Metadata Agent (neutron-metadata-agent)
+# OpenStack Nova Compute (nova-compute)
 #
-# Description:  Manages an OpenStack Volumes (neutron-metadata-agent) process as an HA resource
+# Description:  Manages an OpenStack Virtual Machines (nova-compute) process as an HA resource
 #
-# Authors:      Sebastien Han
+# Authors:      Marcio A. Silva
 # Mainly inspired by the Glance API resource agent written by Martin Gerhard Loschwitz from Hastexo: http://goo.gl/whLpr
 #
-# Support:      openstack@lists.launchpad.net
+# Support:      marcios@us.ibm.com
 # License:      Apache Software License (ASL) 2.0
-#
-# Small changes made by marcios@us.ibm.com to allow it be executed directly 
-# from a bash prompt.
 #
 # See usage() function below for more details ...
 #
 # OCF instance parameters:
 #   OCF_RESKEY_binary
 #   OCF_RESKEY_config
-#   OCF_RESKEY_agent_config
+#   OCF_RESKEY_compute_config
 #   OCF_RESKEY_user
 #   OCF_RESKEY_pid
+#   OCF_RESKEY_amqp_server_port
 #   OCF_RESKEY_additional_parameters
 #######################################################################
 # Initialization:
@@ -33,17 +31,19 @@ OCF_ROOT=${OCF_ROOT:-/usr/lib/ocf}
 
 # Fill in some defaults if no values are specified
 
-OCF_RESKEY_binary_default="neutron-metadata-agent"
-OCF_RESKEY_config_default="/etc/neutron/neutron.conf"
-OCF_RESKEY_agent_config_default="/etc/neutron/metadata_agent.ini"
-OCF_RESKEY_user_default="neutron"
+OCF_RESKEY_binary_default="nova-compute"
+OCF_RESKEY_config_default="/etc/nova/nova.conf"
+OCF_RESKEY_compute_config_default="/etc/nova/nova-compute.conf"
+OCF_RESKEY_user_default="nova"
 OCF_RESKEY_pid_default="$HA_RSCTMP/$OCF_RESOURCE_INSTANCE.pid"
+OCF_RESKEY_amqp_server_port_default="5672"
 
 : ${OCF_RESKEY_binary=${OCF_RESKEY_binary_default}}
 : ${OCF_RESKEY_config=${OCF_RESKEY_config_default}}
-: ${OCF_RESKEY_agent_config=${OCF_RESKEY_agent_config_default}}
+: ${OCF_RESKEY_compute_config=${OCF_RESKEY_compute_config_default}}
 : ${OCF_RESKEY_user=${OCF_RESKEY_user_default}}
 : ${OCF_RESKEY_pid=${OCF_RESKEY_pid_default}}
+: ${OCF_RESKEY_amqp_server_port=${OCF_RESKEY_amqp_server_port_default}}
 
 #######################################################################
 
@@ -51,7 +51,7 @@ usage() {
     cat <<UEND
         usage: $0 (start|stop|validate-all|meta-data|status|monitor)
 
-        $0 manages an OpenStack Neutron Metadata Agent (neutron-metadata-agent) process as an HA resource
+        $0 manages an OpenStack Nova Compute (nova-compute) process as an HA resource
 
         The 'start' operation starts the volume service.
         The 'stop' operation stops the volume service.
@@ -67,54 +67,54 @@ meta_data() {
     cat <<END
 <?xml version="1.0"?>
 <!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
-<resource-agent name="neutron-metadata-agent">
+<resource-agent name="nova-compute">
 <version>1.0</version>
 
 <longdesc lang="en">
-Resource agent for the OpenStack Neutron Metadata Agent (neutron-metadata-agent)
-May manage a neutron-metadata-agent instance or a clone set that
-creates a distributed neutron-metadata-agent cluster.
+Resource agent for the OpenStack Nova Compute (nova-compute)
+May manage a nova-compute instance or a clone set that
+creates a distributed nova-compute cluster.
 </longdesc>
-<shortdesc lang="en">Manages the OpenStack Neutron Metadata Agent (neutron-metadata-agent)</shortdesc>
+<shortdesc lang="en">Manages the OpenStack Nova Compute (nova-compute)</shortdesc>
 <parameters>
 
 <parameter name="binary" unique="0" required="0">
 <longdesc lang="en">
-Location of the OpenStack Neutron Metadata Agent server binary (neutron-metadata-agent)
+Location of the OpenStack Nova Compute server binary (nova-compute)
 </longdesc>
-<shortdesc lang="en">OpenStack Neutron Metadata Agent server binary (neutron-metadata-agent)</shortdesc>
+<shortdesc lang="en">OpenStack Nova Compute server binary (nova-compute)</shortdesc>
 <content type="string" default="${OCF_RESKEY_binary_default}" />
 </parameter>
 
 <parameter name="config" unique="0" required="0">
 <longdesc lang="en">
-Location of the OpenStack Neutron Metadata Agent (neutron-metadata-agent) configuration file
+Location of the OpenStack Nova Compute (nova-compute) configuration file
 </longdesc>
-<shortdesc lang="en">OpenStack Neutron Metadata Agent (neutron-metadata-agent) config file</shortdesc>
+<shortdesc lang="en">OpenStack Nova Compute (nova-compute) config file</shortdesc>
 <content type="string" default="${OCF_RESKEY_config_default}" />
+</parameter>
+
+<parameter name="compute_config" unique="0" required="0">
+<longdesc lang="en">
+Location of the OpenStack Nova Compute (nova-compute) configuration file
+</longdesc>
+<shortdesc lang="en">OpenStack Nova Compute (nova-compute) config file</shortdesc>
+<content type="string" default="${OCF_RESKEY_compute_config_default}" />
 </parameter>
 
 <parameter name="user" unique="0" required="0">
 <longdesc lang="en">
-User running OpenStack Neutron Metadata Agent (neutron-metadata-agent)
+User running OpenStack Nova Compute (nova-compute)
 </longdesc>
-<shortdesc lang="en">OpenStack Neutron Metadata Agent (neutron-metadata-agent) user</shortdesc>
+<shortdesc lang="en">OpenStack Nova Compute (nova-compute) user</shortdesc>
 <content type="string" default="${OCF_RESKEY_user_default}" />
-</parameter>
-
-<parameter name="agent_config" unique="0" required="0">
-<longdesc lang="en">
-Location of the OpenStack Metadata agent configuration file
-</longdesc>
-<shortdesc lang="en">OpenStack Metadata (neutron-metadata-agent) config file</shortdesc>
-<content type="string" default="${OCF_RESKEY_agent_config_default}" />
 </parameter>
 
 <parameter name="pid" unique="0" required="0">
 <longdesc lang="en">
-The pid file to use for this OpenStack Neutron Metadata Agent (neutron-metadata-agent) instance
+The pid file to use for this OpenStack Nova Compute (nova-compute) instance
 </longdesc>
-<shortdesc lang="en">OpenStack Neutron Metadata Agent (neutron-metadata-agent) pid file</shortdesc>
+<shortdesc lang="en">OpenStack Nova Compute (nova-compute) pid file</shortdesc>
 <content type="string" default="${OCF_RESKEY_pid_default}" />
 </parameter>
 
@@ -124,14 +124,13 @@ The listening port number of the AMQP server. Mandatory to perform a monitor che
 </longdesc>                                                                                                                                                                                                               
 <shortdesc lang="en">AMQP listening port</shortdesc>                                                                                                                                                                      
 <content type="integer" default="${OCF_RESKEY_amqp_server_port_default}" />                                                                                                                                              
-</parameter>      
- 
+</parameter>
 
 <parameter name="additional_parameters" unique="0" required="0">
 <longdesc lang="en">
-Additional parameters to pass on to the OpenStack Neutron Metadata Agent (neutron-metadata-agent)
+Additional parameters to pass on to the OpenStack Nova Compute (nova-compute)
 </longdesc>
-<shortdesc lang="en">Additional parameters for neutron-metadata-agent</shortdesc>
+<shortdesc lang="en">Additional parameters for nova-compute</shortdesc>
 <content type="string" />
 </parameter>
 
@@ -152,7 +151,7 @@ END
 #######################################################################
 # Functions invoked by resource manager actions
 
-neutron_metadata_agent_validate() {
+nova_compute_validate() {
     local rc
 
     check_binary $OCF_RESKEY_binary
@@ -178,12 +177,12 @@ neutron_metadata_agent_validate() {
     true
 }
 
-neutron_metadata_agent_status() {
+nova_compute_status() {
     local pid
     local rc
 
     if [ ! -f $OCF_RESKEY_pid ]; then
-        ocf_log info "OpenStack Neutron Metadata Agent (neutron-metadata-agent) is not running"
+        ocf_log info "OpenStack Nova Compute (nova-compute) is not running"
         return $OCF_NOT_RUNNING
     else
         pid=`cat $OCF_RESKEY_pid`
@@ -194,74 +193,94 @@ neutron_metadata_agent_status() {
     if [ $rc -eq 0 ]; then
         return $OCF_SUCCESS
     else
-        ocf_log info "Old PID file found, but OpenStack Neutron Metadata Agent (neutron-metadata-agent) is not running"
+        ocf_log info "Old PID file found, but OpenStack Nova Compute (nova-compute) is not running"
         return $OCF_NOT_RUNNING
     fi
 }
 
-neutron_metadata_agent_monitor() {
+nova_compute_monitor() {
+    local rc
     local pid
-    local rc
+    local compute_amqp_check
 
-    if [ ! -f $OCF_RESKEY_pid ]; then
-        ocf_log info "OpenStack Neutron Metadata Agent (neutron-metadata-agent) is not running"
-        return $OCF_NOT_RUNNING
-    else
-        pid=`cat $OCF_RESKEY_pid`
-    fi
-
-    ocf_run -warn kill -s 0 $pid
+    nova_compute_status
     rc=$?
-    if [ $rc -eq 0 ]; then
-        return $OCF_SUCCESS
-    else
-        ocf_log info "Old PID file found, but OpenStack Neutron Metadata Agent (neutron-metadata-agent) is not running"
-        return $OCF_NOT_RUNNING
+
+    # If status returned anything but success, return that immediately
+    if [ $rc -ne $OCF_SUCCESS ]; then
+        return $rc
     fi
+
+    # Grab nova-compute PID
+    pid=`cat $OCF_RESKEY_pid`
+
+    if ocf_is_true "$OCF_RESKEY_multibackend"; then
+      # Grab the child's PIDs
+      for i in `ps -o pid --no-headers --ppid $pid`
+      do
+        compute_amqp_check=`netstat -punt | grep -s "$OCF_RESKEY_amqp_server_port" | grep -s "$i" | grep -qs "ESTABLISHED"`
+        rc=$?
+        if [ $rc -ne 0 ]; then
+          ocf_log err "This child process from Nova Compute is not connected to the AMQP server: $rc"
+          return $OCF_NOT_RUNNING
+        fi
+      done
+    else
+      # Check the connections according to the PID
+      # We are sure to hit the scheduler process and not other nova process with the same connection behavior (for example nova-cert)
+      # check the connections according to the PID
+      compute_amqp_check=`netstat -punt | grep -s "$OCF_RESKEY_amqp_server_port" | grep -s "$pid" | grep -qs "ESTABLISHED"`
+      rc=$?
+      if [ $rc -ne 0 ]; then
+          ocf_log err "Nova Compute is not connected to the AMQP server: $rc"
+          return $OCF_NOT_RUNNING
+      fi
+    fi
+
+    ocf_log debug "OpenStack Nova Compute (nova-compute) monitor succeeded"
+    return $OCF_SUCCESS
 }
 
-neutron_metadata_agent_start() {
+nova_compute_start() {
     local rc
 
-    neutron_metadata_agent_status
+    nova_compute_status
     rc=$?
     if [ $rc -eq $OCF_SUCCESS ]; then
-        ocf_log info "OpenStack Neutron Metadata Agent (neutron-metadata-agent) already running"
+        ocf_log info "OpenStack Nova Compute (nova-compute) already running"
         return $OCF_SUCCESS
     fi
 
-    # run the actual neutron-server daemon with correct configurations files (server + plugin)
-    # Don't use ocf_run as we're sending the tool's output
+    # run the actual nova-compute daemon. Don't use ocf_run as we're sending the tool's output
     # straight to /dev/null anyway and using ocf_run would break stdout-redirection here.
     su ${OCF_RESKEY_user} -s /bin/sh -c "${OCF_RESKEY_binary} --config-file=$OCF_RESKEY_config \
-       	--config-file=$OCF_RESKEY_agent_config --log-file=/var/log/neutron/metadata.log $OCF_RESKEY_additional_parameters"' >> \
-	/dev/null 2>&1 & echo $!' > $OCF_RESKEY_pid
+       --config-file=$OCF_RESKEY_compute_config $OCF_RESKEY_additional_parameters"' >> /dev/null 2>&1 & echo $!' > $OCF_RESKEY_pid
 
     # Spin waiting for the server to come up.
     # Let the CRM/LRM time us out if required
     while true; do
-    neutron_metadata_agent_monitor
+    nova_compute_monitor
     rc=$?
     [ $rc -eq $OCF_SUCCESS ] && break
     if [ $rc -ne $OCF_NOT_RUNNING ]; then
-        ocf_log err "OpenStack Neutron Metadata Agent (neutron-metadata-agent) start failed"
+        ocf_log err "OpenStack Nova Compute (nova-compute) start failed"
         exit $OCF_ERR_GENERIC
     fi
     sleep 1
     done
 
-    ocf_log info "OpenStack Neutron Metadata Agent (neutron-metadata-agent) started"
+    ocf_log info "OpenStack Nova Compute (nova-compute) started"
     return $OCF_SUCCESS
 }
 
-neutron_metadata_agent_stop() {
+nova_compute_stop() {
     local rc
     local pid
 
-    neutron_metadata_agent_status
+    nova_compute_status
     rc=$?
     if [ $rc -eq $OCF_NOT_RUNNING ]; then
-        ocf_log info "OpenStack Neutron Metadata Agent (neutron-metadata-agent) already stopped"
+        ocf_log info "OpenStack Nova Compute (nova-compute) already stopped"
         return $OCF_SUCCESS
     fi
 
@@ -270,7 +289,7 @@ neutron_metadata_agent_stop() {
     ocf_run kill -s TERM $pid
     rc=$?
     if [ $rc -ne 0 ]; then
-        ocf_log err "OpenStack Neutron Metadata Agent (neutron-metadata-agent) couldn't be stopped"
+        ocf_log err "OpenStack Nova Compute (nova-compute) couldn't be stopped"
         exit $OCF_ERR_GENERIC
     fi
 
@@ -281,26 +300,26 @@ neutron_metadata_agent_stop() {
     fi
     count=0
     while [ $count -lt $shutdown_timeout ]; do
-        neutron_metadata_agent_status
+        nova_compute_status
         rc=$?
         if [ $rc -eq $OCF_NOT_RUNNING ]; then
             break
         fi
         count=`expr $count + 1`
         sleep 1
-        ocf_log debug "OpenStack Neutron Metadata Agent (neutron-metadata-agent) still hasn't stopped yet. Waiting ..."
+        ocf_log debug "OpenStack Nova Compute (nova-compute) still hasn't stopped yet. Waiting ..."
     done
 
-    neutron_metadata_agent_status
+    nova_compute_status
     rc=$?
     if [ $rc -ne $OCF_NOT_RUNNING ]; then
         # SIGTERM didn't help either, try SIGKILL
-        ocf_log info "OpenStack Neutron Metadata Agent (neutron-metadata-agent) failed to stop after ${shutdown_timeout}s \
+        ocf_log info "OpenStack Nova Compute (nova-compute) failed to stop after ${shutdown_timeout}s \
           using SIGTERM. Trying SIGKILL ..."
         ocf_run kill -s KILL $pid
     fi
 
-    ocf_log info "OpenStack Neutron Metadata Agent (neutron-metadata-agent) stopped"
+    ocf_log info "OpenStack Nova Compute (nova-compute) stopped"
 
     rm -f $OCF_RESKEY_pid
 
@@ -317,14 +336,14 @@ case "$1" in
 esac
 
 # Anything except meta-data and help must pass validation
-neutron_metadata_agent_validate || exit $?
+nova_compute_validate || exit $?
 
 # What kind of method was invoked?
 case "$1" in
-  start)        neutron_metadata_agent_start;;
-  stop)         neutron_metadata_agent_stop;;
-  status)       neutron_metadata_agent_status;;
-  monitor)      neutron_metadata_agent_monitor;;
+  start)        nova_compute_start;;
+  stop)         nova_compute_stop;;
+  status)       nova_compute_status;;
+  monitor)      nova_compute_monitor;;
   validate-all) ;;
   *)            usage
                 exit $OCF_ERR_UNIMPLEMENTED;;

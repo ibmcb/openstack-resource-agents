@@ -12,6 +12,8 @@
 # Support:      openstack@lists.launchpad.net
 # License:      Apache Software License (ASL) 2.0
 #
+# Small changes made by marcios@us.ibm.com to allow it be executed directly 
+# from a bash prompt.
 #
 # See usage() function below for more details ...
 #
@@ -28,7 +30,7 @@
 #   OCF_RESKEY_additional_parameters
 #######################################################################
 # Initialization:
-
+OCF_ROOT=${OCF_ROOT:-/usr/lib/ocf}
 : ${OCF_FUNCTIONS_DIR=${OCF_ROOT}/lib/heartbeat}
 . ${OCF_FUNCTIONS_DIR}/ocf-shellfuncs
 
