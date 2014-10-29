@@ -256,7 +256,7 @@ glance_api_monitor() {
         --os_tenant_name "$OCF_RESKEY_os_tenant_name" \
         --os_auth_url "$OCF_RESKEY_os_auth_url" \
         --os-image-url "$OCF_RESKEY_os_image_url" \
-        index > /dev/null 2>&1
+        image-list > /dev/null 2>&1
         rc=$?
         if [ $rc -ne 0 ]; then
             ocf_log err "Failed to connect to the OpenStack ImageService (glance-api): $rc"
